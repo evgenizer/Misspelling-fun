@@ -10,7 +10,6 @@ The classifier, that does the sorting.
 Clustering functions used for Task 2 are included also
 
 
-
 """
 import os
 import numpy as np
@@ -31,7 +30,7 @@ ext_c = 'correct'  #extention given to correction-files
 
 def variants(w):
     """
-    A simple speculative routine to add/remove some common word endings
+    A speculative routine to add/remove some common word endings
     @param 
     # this simple addition improved classification 
     """
@@ -49,11 +48,12 @@ def clusters(the_list):
     Returns clusters of similar words in the list, Using Levenshtein distance, 
     We use sciit-learn affinityPropagation clustering algorithm to detect clusters
     @param the_list : list of words
-    @note: unfortunately clustering algorithm is quadratic in len(the_list, so it is slow!
+    @note: unfortunately the clustering algorithm is quadratic in len(the_list, so it is slow!
     """
     import sklearn.cluster
     words = np.asarray(the_list) #So that indexing with a list will work
-    lev_similarity = -1*np.array([[np.sqrt(Levenshtein.distance(w1,w2)) for w1 in words] 
+    lev_similarity = -1*np.array([[(Levenshtein.distance(w1,w2))
+                if Levenshtein.distance(w1,w2)<3 else 20 for w1 in words] 
                                        for w2 in words])
 
     affprop = sklearn.cluster.AffinityPropagation(affinity="precomputed", 
@@ -95,8 +95,8 @@ class Misspellings(object):
         self.__files = []   
         if files:
             self.add(files)
-                                            
-        self.__WORDS = list(set([w.lower() for w in WORDS]))    # vocabulary, lower case
+            
+        self.__WORDS = list(set([w.lower() for w in WORDS])) if WORDS else None    # vocabulary, lower case
         self.__misspellings = [] # this is the "model" that we train 
         self.__misspellings_CV = [] # this is the "model" that we train when doing cross-validation
         
@@ -142,6 +142,13 @@ class Misspellings(object):
             files = files_train
         numfiles = len(files)
         words=[]
+        for i,fn in enumerate(files):
+            if i % int(round(numfiles/10.0)) ==0  or i == numfiles-1: 
+                progress(i, numfiles-1, status = 'reading data')
+            try:
+                words.extend(read_file(fn))
+            except IOError:
+                continue
         if self.__WORDS: # task 1
             for i,fn in enumerate(files):
                 if i % int(round(numfiles/10.0)) ==0  or i == numfiles-1: 
@@ -158,16 +165,13 @@ class Misspellings(object):
             allerrors = [ w for i,w in enumerate(doc_lower) if mask[i] ]
                 #allerrors.extend(list(errors) )
             
-        else: # task 2 
-            if None is self.__WORDS: self.__WORDS = []
-            for fn in files:
-                words.extend(list(set(read_file(fn))))
-            
+        elif None is self.__WORDS: # task 2 
+            self.__WORDS = []            
             words_set = list(set(map(lambda x: x.lower() ,set(words))  )) 
             totw = len(words_set)
-            num_words =totw if MAX_WORDS_CLUSTERING is None else MAX_WORDS_CLUSTERING
+            num_words =totw if MAX_WORDS_CLUSTERING is None else min(totw,MAX_WORDS_CLUSTERING)
             wclusters = clusters(words_set[:num_words]) #detect clusters
-            totw = len(words_set[:num_words])
+            totw = num_words
             errors=[]
             for _,cl in wclusters.items():
                 cll = list(cl)
@@ -229,7 +233,8 @@ class Misspellings(object):
         totw=0 
         acc = []
         for i,fn in enumerate(files):
-            if i % 2 ==0  or i == len(files)-1 : progress(i, len(files)-1, status = 'Predicting ')
+            #if i % 2 ==0  or i == len(files)-1 : 
+            progress(i, len(files)-1, status = 'Predicting ')
             errors, misclassified, dw = self._calc_errors_doc(fn, bCV)
             acc.append(self._accuracy_score(errors,misclassified))
             totw += dw
@@ -247,6 +252,7 @@ class Misspellings(object):
         calculates misspelled words, missclassified words and
         the total number of words in a document
         @param fn: str, filename 
+        @param bC: bool, if cross-validation
         """
         errors, misclassified, totw = [],[],0
         try:
@@ -284,9 +290,10 @@ class Misspellings(object):
         train_fs = fs[:tt]
         cv_fc = fs[tt:]
         self.__misspellings_CV = []
-        __ = self.fit(train_fs, bCV=True)
+        _ = self.fit(train_fs, bCV=True)
         acc = self.predict(cv_fc, bCV = True)
         return acc
+        
     def _accuracy_score(self,errors,misclassified):
         """ a definition for acuracy score"""
         return float(len(errors))/float(len(misclassified)+len(errors))
@@ -405,7 +412,7 @@ def progress(count, total, status=''):
     percents = round(100.0 * count / float(total), 1)
     bar = '=' * filled_len + '-' * (bar_len - filled_len)
     sys.stdout.write('\r')
-    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+    sys.stdout.write('[%s] %s%s ...%s \r' % (bar, percents, '%', status))
     sys.stdout.flush()
 
          

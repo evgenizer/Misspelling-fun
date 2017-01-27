@@ -75,7 +75,6 @@ def flatten(l, ltypes=(list, tuple)):
     
 ##----------------------   text analysis    ---------------------
 
-
 def normalize(word):
   """Return word with symbols stripped from its ends."""
   
@@ -87,9 +86,6 @@ def split_words(line):
   line = _NORM_REGEX.sub(r'\1 \2', line)
   return [normalize(w) for w in _WORD_REGEX.split(line)]
  
- 
-    
-
 
         
 def main():
@@ -102,8 +98,9 @@ def main():
     test_root = '../test'
     wordlist ='./wordlist.txt'
     
-    task = int(sys.argv[1])
-    correct_errors= False
+    task = int(sys.argv[1])    
+    correct_errors= True
+    
     print ('\n Performing task {}... Do misspelling correction? [{}] \n'.format(task,
            'Yes' if correct_errors else 'No'))
    
@@ -117,20 +114,23 @@ def main():
     
     clf = classifier.Misspellings(train_files_list, WORDS)
     clf.fit()
+    
+    
     #for training purposes and cross_validation runs, e.g. to construct a learning curv
+    #test_subsample = random.sample(test_files_list, 100)
+    test_subsample = test_files_list
     #acc_cv = clf.cross_validate(train_files_list, cv_split = 0.8 )
-    
-    test_subsample = random.sample(test_files_list, 100)
-    
+            
     acc = clf.predict(test_subsample, bCV = False, bCorrect = correct_errors ) # change bCorrect = False if no corrections are desired
-    print ('Average accuracy of the test data classification is {} %'.format(100*acc))
+    print ('Average accuracy of the test data classification is {:.3f}%'.format(100*acc))
     
     print('Basic validate classifier on a random subset of test_files')
-    if not clf.consistancy(test_subsample):
+    if not clf.consistancy(random.sample(test_files_list, 20)):
         print('Invalid!!!')
+    
  
-    print('Average accuracy of misspellings predictions given the vocabulary is {} %'.
-              format(100*clf.accuracy(test_subsample)))
+#    print('Average accuracy of misspellings predictions given the vocabulary is {:.3f}%'.
+#              format(100*clf.accuracy(test_subsample)))
 
 if __name__ == "__main__":
     main() 
